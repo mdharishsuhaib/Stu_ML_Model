@@ -2,17 +2,15 @@ from flask import Flask, request, jsonify
 import joblib
 import pandas as pd
 import numpy as np
-from pathlib import Path
 
 app = Flask(__name__)
 
-# Load the exported pipeline
-MODEL_PATH = Path(__file__).resolve().parent / 'final_student_performance_model.joblib'
+MODEL_PATH = 'final_student_performance_model.joblib'
 try:
     model = joblib.load(MODEL_PATH)
-    print("Production model loaded successfully!")
+    print('Production model loaded successfully!')
 except Exception as e:
-    print(f"Error loading model: {e}")
+    print(f'Error loading model: {e}')
     model = None
 
 @app.route('/predict', methods=['POST'])
@@ -29,10 +27,7 @@ def predict():
         else:
             return jsonify({'error': 'Input data must be a JSON object or a list of objects'}), 400
 
-        # Convert to DataFrame
         input_df = pd.DataFrame(input_data)
-
-        # Run identical Feature Engineering steps to match the model training schema
         input_df['Study_Efficiency'] = input_df['Hours_Studied'] / (input_df['Sleep_Hours'] + 1)
 
         support_mapping = {'Low': 1, 'Medium': 2, 'High': 3}
@@ -40,16 +35,10 @@ def predict():
         resources_val = input_df['Access_to_Resources'].map(support_mapping).fillna(2)
         teacher_val = input_df['Teacher_Quality'].map(support_mapping).fillna(2)
         input_df['Total_Support_Score'] = parental_val + resources_val + teacher_val
-
         input_df['Academic_Engagement'] = input_df['Hours_Studied'] * (input_df['Tutoring_Sessions'] + 1)
 
-        # Make predictions using the loaded pipeline
         predictions = model.predict(input_df)
-
-        return jsonify({
-            'predictions': np.round(predictions, 2).tolist()
-        }), 200
-
+        return jsonify({'predictions': np.round(predictions, 2).tolist()}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
